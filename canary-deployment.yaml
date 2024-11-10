@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-deployment
+  namespace: canary-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: upcommerce
+      version: main
+  template:
+    metadata:
+      labels:
+        app: upcommerce
+        version: main
+    spec:
+      containers:
+      - name: upcommerce
+        image: uonyeka/upcommerce:v1 # Usa la imagen correspondiente para la versión principal
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: canary-deployment
+  namespace: canary-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upcommerce
+      version: canary
+  template:
+    metadata:
+      labels:
+        app: upcommerce
+        version: canary
+    spec:
+      containers:
+      - name: upcommerce
+        image: uonyeka/canary-demo:v2 # Usa la imagen correspondiente para la versión canary
+        ports:
+        - containerPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: upcommerce-ingress
+  namespace: canary-demo
+spec:
+  rules:
+  - host: canary-demo.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: main-service
+            port:
+              number: 80
+  - host: canary-demo.local
+    http:
+      paths:
+      - path: /canary
+        pathType: Prefix
+        backend:
+          service:
+            name: canary-service
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-service
+  namespace: canary-demo
+spec:
+  selector:
+    app: upcommerce
+    version: main
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: canary-service
+  namespace: canary-demo
+spec:
+  selector:
+    app: upcommerce
+    version: canary
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
